@@ -8,6 +8,7 @@
 <body>
     <div x-data="app" x-init="init()">
         <button @click="pushButton">Push Button</button>
+        <div id="scan-timeline-root"></div>
         <div id="events">
             <h3>Events:</h3>
             <template x-for="event in events" :key="event._id">
