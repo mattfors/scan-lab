@@ -5,6 +5,13 @@ import PouchDB from 'pouchdb-browser';
 import { buildScanTimeline, updateScanTimelineChart, scanTimelineMarkup } from './components/scanTimeline';
 import type { ScanEvent } from './types/event';
 import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController } from 'chart.js';
+import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend } from 'chart.js';
+import { ModuleRegistry, GridOptions, createGrid, AllCommunityModule } from 'ag-grid-community';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+// Register AG Grid modules
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Register Chart.js components
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController);
@@ -24,6 +31,7 @@ interface AppData {
   loadEvents: () => Promise<void>;
   scanTimeline: ReturnType<typeof buildScanTimeline>;
   init?: () => void;
+  gridApi?: any;
 }
 
 // Keyboard input buffer for scan events
@@ -38,7 +46,6 @@ document.addEventListener('keydown', async (event: KeyboardEvent) => {
     if (scanBuffer.trim().length > 0) {
       const scanEvent: ScanEvent = {
         _id: generateUUID(),
-        eventType: 'scan',
         ts: new Date().toISOString(),
         data: scanBuffer
       };
@@ -75,7 +82,6 @@ Alpine.data('app', (): AppData => ({
   async fakeScan(): Promise<void> {
     const event: ScanEvent = {
       _id: generateUUID(),
-      eventType: 'scan',
       ts: new Date().toISOString(),
       data: 'fakescan'
     };
@@ -106,13 +112,29 @@ Alpine.data('app', (): AppData => ({
   async loadEvents(): Promise<void> {
     try {
       const result = await db.allDocs({ include_docs: true, descending: true });
-      // Sort events by timestamp in descending order (most recent first)
-      this.events = result.rows
+      // Sort events by timestamp in ascending order (oldest first) to calculate delta times
+      const sortedEvents = result.rows
         .map((row: any) => row.doc as ScanEvent)
-        .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+        .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
       
-      // Update the chart after loading events
-      updateScanTimelineChart(this.scanTimeline);
+      // Calculate delta times
+      for (let i = 0; i < sortedEvents.length; i++) {
+        if (i === 0) {
+          sortedEvents[i].deltaTime = 0; // First event has no previous event
+        } else {
+          const prevTime = new Date(sortedEvents[i - 1].ts).getTime();
+          const currTime = new Date(sortedEvents[i].ts).getTime();
+          sortedEvents[i].deltaTime = (currTime - prevTime) / 1000; // Convert to seconds
+        }
+      }
+      
+      // Reverse to show most recent first
+      this.events = sortedEvents.reverse();
+      
+      // Update AG Grid if it exists
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.events);
+      }
     } catch (error) {
       console.error('Error loading events:', error);
     }
@@ -126,6 +148,60 @@ Alpine.data('app', (): AppData => ({
     if (timelineRoot) {
       timelineRoot.innerHTML = scanTimelineMarkup;
       (Alpine as any).initTree(timelineRoot);
+    }
+    
+    // Initialize AG Grid
+    const gridDiv = document.querySelector('#eventsGrid') as HTMLElement;
+    if (gridDiv) {
+      // Destroy existing grid if it exists (for HMR)
+      if (this.gridApi) {
+        this.gridApi.destroy();
+      }
+      
+      // Clear the grid container
+      gridDiv.innerHTML = '';
+      
+      const gridOptions: GridOptions = {
+        columnDefs: [
+          { 
+            field: 'ts', 
+            headerName: 'Time',
+            flex: 2,
+            valueFormatter: (params) => {
+              if (params.value) {
+                return new Date(params.value).toLocaleString();
+              }
+              return '';
+            }
+          },
+          { 
+            field: 'data', 
+            headerName: 'Data',
+            flex: 2
+          },
+          { 
+            field: 'deltaTime', 
+            headerName: 'Delta Time (s)',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null) {
+                return params.value.toFixed(3);
+              }
+              return '0.000';
+            }
+          }
+        ],
+        rowData: this.events,
+        defaultColDef: {
+          sortable: true,
+          filter: true,
+          resizable: true
+        },
+        domLayout: 'autoHeight',
+        theme: 'legacy' // Use legacy theme to avoid warning
+      };
+      
+      this.gridApi = createGrid(gridDiv, gridOptions);
     }
   }
 }));

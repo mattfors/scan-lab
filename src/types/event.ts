@@ -1,6 +1,6 @@
 export interface ScanEvent {
   _id: string;
-  eventType: string;
   ts: string;
   data?: string;
+  deltaTime?: number; // Time in seconds since previous event
 }
