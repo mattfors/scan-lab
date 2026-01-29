@@ -11,12 +11,30 @@ A minimal web application for capturing and persisting scan events using TypeScr
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: GitHub Codespaces (Recommended)
+
+The easiest way to get started is using GitHub Codespaces:
+
+1. Click the "Code" button on the GitHub repository
+2. Select "Open with Codespaces" 
+3. Click "New codespace"
+
+The development environment will automatically set up with Node.js 20 and install all dependencies. Once ready, run:
+
+```bash
+npm run dev
+```
+
+The webpack dev server will start on port 8080, and GitHub Codespaces will automatically forward the port and provide you with a link to view the application in your browser.
+
+### Option 2: Local Development
+
+#### Prerequisites
 
 - Node.js (v14 or higher)
 - npm (v6 or higher)
 
-### Installation
+#### Installation
 
 1. Clone the repository:
 ```bash
