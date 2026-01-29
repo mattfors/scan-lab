@@ -32,6 +32,8 @@ module.exports = {
   devServer: {
     static: './dist',
     hot: true,
-    open: true
+    open: !process.env.CODESPACES,
+    host: '0.0.0.0',
+    allowedHosts: 'all'
   }
 };
