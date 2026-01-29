@@ -23,6 +23,7 @@ interface AppData {
 
 // Keyboard input buffer for scan events
 let scanBuffer = '';
+let reloadEventsCallback: (() => Promise<void>) | null = null;
 
 // Add document-level keyboard listener
 document.addEventListener('keydown', async (event: KeyboardEvent) => {
@@ -39,10 +40,9 @@ document.addEventListener('keydown', async (event: KeyboardEvent) => {
       
       try {
         await db.put(scanEvent);
-        // Trigger Alpine to reload events (if Alpine is initialized)
-        const appElement = document.querySelector('[x-data="app"]');
-        if (appElement && (appElement as any).__x) {
-          await (appElement as any).__x.$data.loadEvents();
+        // Trigger Alpine to reload events
+        if (reloadEventsCallback) {
+          await reloadEventsCallback();
         }
       } catch (error) {
         console.error('Error inserting scan event:', error);
@@ -85,13 +85,18 @@ Alpine.data('app', (): AppData => ({
   async loadEvents(): Promise<void> {
     try {
       const result = await db.allDocs({ include_docs: true, descending: true });
-      this.events = result.rows.map((row: any) => row.doc as ScanEvent);
+      // Sort events by timestamp in descending order (most recent first)
+      this.events = result.rows
+        .map((row: any) => row.doc as Event)
+        .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
     } catch (error) {
       console.error('Error loading events:', error);
     }
   },
   
   init(): void {
+    // Store reference to loadEvents for use in keyboard listener
+    reloadEventsCallback = this.loadEvents.bind(this);
     this.loadEvents();
     const timelineRoot = document.getElementById('scan-timeline-root');
     if (timelineRoot) {
