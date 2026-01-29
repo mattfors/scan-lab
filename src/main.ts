@@ -11,11 +11,12 @@ function generateUUID(): string {
 }
 
 // Initialize PouchDB
-const db = new PouchDB('scan-lab');
+let db = new PouchDB('scan-lab');
 
 interface AppData {
   events: ScanEvent[];
-  pushButton: () => Promise<void>;
+  fakeScan: () => Promise<void>;
+  clearData: () => Promise<void>;
   loadEvents: () => Promise<void>;
   scanTimeline: ReturnType<typeof buildScanTimeline>;
   init?: () => void;
@@ -67,11 +68,12 @@ Alpine.data('app', (): AppData => ({
     return buildScanTimeline(this.events);
   },
   
-  async pushButton(): Promise<void> {
+  async fakeScan(): Promise<void> {
     const event: ScanEvent = {
       _id: generateUUID(),
-      eventType: 'button_push',
-      ts: new Date().toISOString()
+      eventType: 'scan',
+      ts: new Date().toISOString(),
+      data: 'fakescan'
     };
     
     try {
@@ -79,6 +81,21 @@ Alpine.data('app', (): AppData => ({
       await this.loadEvents();
     } catch (error) {
       console.error('Error inserting event:', error);
+    }
+  },
+
+  async clearData(): Promise<void> {
+    const confirmed = window.confirm('Are you sure you want to clear all local data? This action cannot be undone.');
+    
+    if (confirmed) {
+      try {
+        await db.destroy();
+        // Recreate the database after destroying it
+        db = new PouchDB('scan-lab');
+        await this.loadEvents();
+      } catch (error) {
+        console.error('Error clearing data:', error);
+      }
     }
   },
   
