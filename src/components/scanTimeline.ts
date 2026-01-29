@@ -12,7 +12,6 @@ export { scanTimelineMarkup };
 
 export function buildScanTimeline(events: ScanEvent[]): ScanTimeline {
   const scanEvents = events
-    .filter((event) => event.eventType === 'scan')
     .slice()
     .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
   const scanCount = scanEvents.length;
