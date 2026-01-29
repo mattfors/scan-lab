@@ -4,6 +4,10 @@ import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
 import { buildScanTimeline, scanTimelineMarkup } from './components/scanTimeline';
 import type { ScanEvent } from './types/event';
+import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend } from 'chart.js';
+
+// Register Chart.js components
+Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend);
 
 // Generate UUID v4 using crypto API for better randomness
 function generateUUID(): string {
@@ -123,5 +127,37 @@ Alpine.data('app', (): AppData => ({
   }
 }));
 
+// Initialize Chart.js Hello World Line Chart
+function initHelloWorldChart(): void {
+  const canvas = document.getElementById('helloWorldChart') as HTMLCanvasElement;
+  if (canvas) {
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        datasets: [{
+          label: 'Hello World Data',
+          data: [12, 19, 3, 5, 2, 3, 9],
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Hello World Line Chart'
+          }
+        }
+      }
+    });
+  }
+}
+
 // Start Alpine
 Alpine.start();
+
+// Initialize chart after Alpine starts
+initHelloWorldChart();

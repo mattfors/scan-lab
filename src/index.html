@@ -10,6 +10,13 @@
         <button @click="fakeScan">Fake Scan</button>
         <button @click="clearData">Clear Local Data</button>
         <div id="scan-timeline-root"></div>
+        
+        <!-- Chart.js Hello World Line Chart -->
+        <div style="margin: 20px 0; max-width: 800px;">
+            <h3>Hello World Line Chart</h3>
+            <canvas id="helloWorldChart"></canvas>
+        </div>
+        
         <div id="events">
             <h3>Events:</h3>
             <template x-for="event in events" :key="event._id">
