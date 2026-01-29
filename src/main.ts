@@ -134,6 +134,9 @@ Alpine.data('app', (): AppData => ({
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.events);
       }
+      
+      // Update scan timeline chart
+      updateScanTimelineChart(this.scanTimeline);
     } catch (error) {
       console.error('Error loading events:', error);
     }
