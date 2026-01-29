@@ -24,27 +24,11 @@
     letter-spacing: 0.6px;
 }
 
-.timeline-track {
+.timeline-chart-container {
     position: relative;
-    height: 90px;
+    height: 200px;
     border: 1px solid #ddd;
-    background-image: repeating-linear-gradient(
-        90deg,
-        #f4f4f4 0%,
-        #f4f4f4 var(--block-size),
-        #ededed var(--block-size),
-        #ededed calc(var(--block-size) * 2)
-    );
-    overflow: hidden;
-}
-
-.timeline-bar {
-    position: absolute;
-    top: 8px;
-    bottom: 8px;
-    width: 2px;
-    background-color: #333;
-    transform: translateX(-1px);
+    background-color: #f9f9f9;
 }
 
 .timeline-empty {
@@ -58,5 +42,6 @@
     font-family: 'Helvetica Neue', 'Arial', sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.6px;
-    background-color: rgba(255, 255, 255, 0.6);
+    background-color: rgba(255, 255, 255, 0.8);
+    pointer-events: none;
 }

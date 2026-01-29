@@ -2,8 +2,9 @@ import './styles/main.css';
 import './styles/scan-timeline.css';
 import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
-import { buildScanTimeline, scanTimelineMarkup } from './components/scanTimeline';
+import { buildScanTimeline, updateScanTimelineChart, scanTimelineMarkup } from './components/scanTimeline';
 import type { ScanEvent } from './types/event';
+import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController } from 'chart.js';
 import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend } from 'chart.js';
 import { ModuleRegistry, GridOptions, createGrid, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
@@ -13,7 +14,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Register Chart.js components
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend);
+Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController);
 
 // Generate UUID v4 using crypto API for better randomness
 function generateUUID(): string {
