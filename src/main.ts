@@ -1,3 +1,4 @@
+import './styles/main.css';
 import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
 

@@ -1,0 +1,47 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+}
+h1 {
+    color: #333;
+}
+button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+button:hover {
+    background-color: #45a049;
+}
+#events {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+.event-item {
+    padding: 8px;
+    margin: 5px 0;
+    background-color: white;
+    border-left: 3px solid #4CAF50;
+    border-radius: 3px;
+}
+.event-id {
+    color: #666;
+    font-size: 0.9em;
+}
+.event-time {
+    color: #999;
+    font-size: 0.85em;
+}
