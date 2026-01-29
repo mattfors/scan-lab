@@ -87,7 +87,7 @@ Alpine.data('app', (): AppData => ({
       const result = await db.allDocs({ include_docs: true, descending: true });
       // Sort events by timestamp in descending order (most recent first)
       this.events = result.rows
-        .map((row: any) => row.doc as Event)
+        .map((row: any) => row.doc as ScanEvent)
         .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
     } catch (error) {
       console.error('Error loading events:', error);
