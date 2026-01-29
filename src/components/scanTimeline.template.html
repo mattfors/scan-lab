@@ -3,15 +3,12 @@
     <h3>Scan Timeline</h3>
     <div class="timeline-meta">
       <span x-text="`${scanTimeline.scanCount} scans`"></span>
-      <span x-show="scanTimeline.durationSeconds > 0"
-        x-text="`(${scanTimeline.durationSeconds.toFixed(1)}s span)`"></span>
+      <span>(Last 90 seconds)</span>
     </div>
   </div>
-  <div class="timeline-track" :style="`--block-size: ${scanTimeline.blockSizePercent}%;`">
-    <template x-for="bar in scanTimeline.bars" :key="bar.id">
-      <span class="timeline-bar" :style="`left: ${bar.leftPercent}%;`" :title="bar.label"></span>
-    </template>
-    <div class="timeline-empty" x-show="scanTimeline.bars.length === 0">
+  <div class="timeline-chart-container">
+    <canvas id="scanTimelineChart"></canvas>
+    <div class="timeline-empty" x-show="scanTimeline.scanCount === 0">
       No scans yet. Start scanning to see timing gaps.
     </div>
   </div>

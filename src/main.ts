@@ -2,12 +2,12 @@ import './styles/main.css';
 import './styles/scan-timeline.css';
 import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
-import { buildScanTimeline, scanTimelineMarkup } from './components/scanTimeline';
+import { buildScanTimeline, updateScanTimelineChart, scanTimelineMarkup } from './components/scanTimeline';
 import type { ScanEvent } from './types/event';
-import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend } from 'chart.js';
+import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController } from 'chart.js';
 
 // Register Chart.js components
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend);
+Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController);
 
 // Generate UUID v4 using crypto API for better randomness
 function generateUUID(): string {
@@ -110,6 +110,9 @@ Alpine.data('app', (): AppData => ({
       this.events = result.rows
         .map((row: any) => row.doc as ScanEvent)
         .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+      
+      // Update the chart after loading events
+      updateScanTimelineChart(this.scanTimeline);
     } catch (error) {
       console.error('Error loading events:', error);
     }
