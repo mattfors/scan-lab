@@ -24,6 +24,7 @@ interface AppData {
   events: Event[];
   pushButton: () => Promise<void>;
   loadEvents: () => Promise<void>;
+  init?: () => void;
 }
 
 Alpine.data('app', (): AppData => ({
