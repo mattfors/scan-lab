@@ -1,6 +1,9 @@
 import './styles/main.css';
+import './styles/scan-timeline.css';
 import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
+import { buildScanTimeline, scanTimelineMarkup } from './components/scanTimeline';
+import type { ScanEvent } from './types/event';
 
 // Generate UUID v4 using crypto API for better randomness
 function generateUUID(): string {
@@ -10,18 +13,11 @@ function generateUUID(): string {
 // Initialize PouchDB
 const db = new PouchDB('scan-lab');
 
-// Alpine.js app data
-interface Event {
-  _id: string;
-  eventType: string;
-  ts: string;
-  data?: string;
-}
-
 interface AppData {
-  events: Event[];
+  events: ScanEvent[];
   pushButton: () => Promise<void>;
   loadEvents: () => Promise<void>;
+  scanTimeline: ReturnType<typeof buildScanTimeline>;
   init?: () => void;
 }
 
@@ -34,7 +30,7 @@ document.addEventListener('keydown', async (event: KeyboardEvent) => {
   if (event.key === 'Enter') {
     // If buffer has content, create a scan event
     if (scanBuffer.trim().length > 0) {
-      const scanEvent: Event = {
+      const scanEvent: ScanEvent = {
         _id: generateUUID(),
         eventType: 'scan',
         ts: new Date().toISOString(),
@@ -66,9 +62,13 @@ document.addEventListener('keydown', async (event: KeyboardEvent) => {
 
 Alpine.data('app', (): AppData => ({
   events: [],
+
+  get scanTimeline() {
+    return buildScanTimeline(this.events);
+  },
   
   async pushButton(): Promise<void> {
-    const event: Event = {
+    const event: ScanEvent = {
       _id: generateUUID(),
       eventType: 'button_push',
       ts: new Date().toISOString()
@@ -85,7 +85,7 @@ Alpine.data('app', (): AppData => ({
   async loadEvents(): Promise<void> {
     try {
       const result = await db.allDocs({ include_docs: true, descending: true });
-      this.events = result.rows.map((row: any) => row.doc as Event);
+      this.events = result.rows.map((row: any) => row.doc as ScanEvent);
     } catch (error) {
       console.error('Error loading events:', error);
     }
@@ -93,6 +93,11 @@ Alpine.data('app', (): AppData => ({
   
   init(): void {
     this.loadEvents();
+    const timelineRoot = document.getElementById('scan-timeline-root');
+    if (timelineRoot) {
+      timelineRoot.innerHTML = scanTimelineMarkup;
+      (Alpine as any).initTree(timelineRoot);
+    }
   }
 }));
 
