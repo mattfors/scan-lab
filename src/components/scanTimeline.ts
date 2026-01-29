@@ -16,7 +16,6 @@ export function buildScanTimeline(events: ScanEvent[]): ScanTimeline {
   const ninetySecondsAgo = now - 90000; // 90 seconds in milliseconds
 
   const scanEvents = events
-    .filter((event) => event.eventType === 'scan')
     .filter((event) => new Date(event.ts).getTime() >= ninetySecondsAgo) // Only last 90 seconds
     .slice()
     .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
