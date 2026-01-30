@@ -24,12 +24,19 @@ export interface RollingStatsConfig {
     min?: number;
     max?: number;
   };
+  zDelta: {
+    title: string;
+    yAxisLabel: string;
+    min?: number;
+    max?: number;
+  };
 }
 
 /**
  * Default configuration for rolling statistics charts.
  * - Rolling Std Log: y-axis from -6 to 1
  * - Delta vs Index: y-axis from 0 to 5
+ * - Z-Delta: y-axis from -3 to 3
  */
 export const defaultRollingStatsConfig: RollingStatsConfig = {
   rollingMean: {
@@ -48,12 +55,19 @@ export const defaultRollingStatsConfig: RollingStatsConfig = {
     yAxisLabel: 'Delta Time (s)',
     min: 0,
     max: 5
+  },
+  zDelta: {
+    title: 'Z-Delta vs Index',
+    yAxisLabel: 'Z-Delta',
+    min: -3,
+    max: 3
   }
 };
 
 let rollingMeanChart: Chart | null = null;
 let rollingStdLogChart: Chart | null = null;
 let deltaVsIndexChart: Chart | null = null;
+let zDeltaChart: Chart | null = null;
 
 /**
  * Updates the Rolling Mean chart with new data.
@@ -263,8 +277,80 @@ export function updateDeltaVsIndexChart(events: ScanEvent[], config: RollingStat
 }
 
 /**
- * Updates all rolling statistics charts (Rolling Mean, Rolling Std Log, and Delta vs Index).
- * Convenience function that calls all three chart update functions with the same data and config.
+ * Updates the Z-Delta chart with new data.
+ * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
+ * Displays z-score of delta time: (delta - mean) / std.
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration including axis limits and labels
+ */
+export function updateZDeltaChart(events: ScanEvent[], config: RollingStatsConfig): void {
+  const canvas = document.getElementById('zDeltaChart') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const indices = events.map(e => e.scanIndex ?? 0);
+  const zDeltas = events.map(e => {
+    const val = e.zDelta ?? 0;
+    return isFinite(val) ? val : null;
+  });
+
+  if (zDeltaChart) {
+    zDeltaChart.data.labels = indices;
+    zDeltaChart.data.datasets[0].data = zDeltas;
+    zDeltaChart.update();
+  } else {
+    zDeltaChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: indices,
+        datasets: [{
+          label: 'Z-Delta',
+          data: zDeltas,
+          borderColor: 'rgb(153, 102, 255)',
+          backgroundColor: 'rgba(153, 102, 255, 0.1)',
+          tension: 0.1,
+          pointRadius: 2,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Scan Index'
+            }
+          },
+          y: {
+            min: config.zDelta.min,
+            max: config.zDelta.max,
+            title: {
+              display: true,
+              text: config.zDelta.yAxisLabel
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: config.zDelta.title
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+}
+
+/**
+ * Updates all rolling statistics charts (Rolling Mean, Rolling Std Log, Delta vs Index, and Z-Delta).
+ * Convenience function that calls all four chart update functions with the same data and config.
  * @param events - Array of scan events in chronological order
  * @param config - Chart configuration, defaults to defaultRollingStatsConfig
  */
@@ -272,4 +358,5 @@ export function updateRollingStatsCharts(events: ScanEvent[], config: RollingSta
   updateRollingMeanChart(events, config);
   updateRollingStdLogChart(events, config);
   updateDeltaVsIndexChart(events, config);
+  updateZDeltaChart(events, config);
 }

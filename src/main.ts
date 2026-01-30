@@ -50,6 +50,7 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].coefficientOfVariation = 0;
       events[i].logMean = -Infinity;
       events[i].logStd = -Infinity;
+      events[i].zDelta = 0;
       continue;
     }
     
@@ -68,6 +69,7 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].coefficientOfVariation = 0;
       events[i].logMean = -Infinity;
       events[i].logStd = -Infinity;
+      events[i].zDelta = 0;
     } else {
       const mean = calculateMean(deltaTimes);
       const std = calculateStd(deltaTimes);
@@ -77,6 +79,23 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].coefficientOfVariation = mean !== 0 ? std / mean : 0;
       events[i].logMean = mean > 0 ? Math.log(mean) : -Infinity;
       events[i].logStd = std > 0 ? Math.log(std) : -Infinity;
+      
+      // Calculate z-delta using only past deltas (not including current event)
+      // This measures how unusual the current delta is compared to recent history
+      const pastWindowStart = Math.max(0, i - config.rollingWindow);
+      const pastWindowEvents = events.slice(pastWindowStart, i);
+      const pastDeltaTimes = pastWindowEvents
+        .filter(e => e.deltaTime !== undefined && e.deltaTime > 0)
+        .map(e => e.deltaTime!);
+      
+      const currentDelta = events[i].deltaTime ?? 0;
+      if (pastDeltaTimes.length === 0) {
+        events[i].zDelta = 0;
+      } else {
+        const pastMean = calculateMean(pastDeltaTimes);
+        const pastStd = calculateStd(pastDeltaTimes);
+        events[i].zDelta = pastStd > 0 ? (currentDelta - pastMean) / pastStd : 0;
+      }
     }
   }
 }
@@ -309,6 +328,17 @@ Alpine.data('app', (): AppData => ({
           { 
             field: 'logStd', 
             headerName: 'Log(Std)',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(3);
+              }
+              return 'N/A';
+            }
+          },
+          { 
+            field: 'zDelta', 
+            headerName: 'Z-Delta',
             flex: 1,
             valueFormatter: (params) => {
               if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
