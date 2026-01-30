@@ -80,9 +80,22 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].logMean = mean > 0 ? Math.log(mean) : -Infinity;
       events[i].logStd = std > 0 ? Math.log(std) : -Infinity;
       
-      // Calculate z-delta: (delta - mean) / std
+      // Calculate z-delta using only past deltas (not including current event)
+      // This measures how unusual the current delta is compared to recent history
+      const pastWindowStart = Math.max(0, i - config.rollingWindow);
+      const pastWindowEvents = events.slice(pastWindowStart, i);
+      const pastDeltaTimes = pastWindowEvents
+        .filter(e => e.deltaTime !== undefined && e.deltaTime > 0)
+        .map(e => e.deltaTime!);
+      
       const currentDelta = events[i].deltaTime ?? 0;
-      events[i].zDelta = std > 0 ? (currentDelta - mean) / std : 0;
+      if (pastDeltaTimes.length === 0) {
+        events[i].zDelta = 0;
+      } else {
+        const pastMean = calculateMean(pastDeltaTimes);
+        const pastStd = calculateStd(pastDeltaTimes);
+        events[i].zDelta = pastStd > 0 ? (currentDelta - pastMean) / pastStd : 0;
+      }
     }
   }
 }
