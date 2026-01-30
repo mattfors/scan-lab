@@ -17,7 +17,8 @@ Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryS
 
 // Application configuration
 const appConfig: AppConfig = {
-  rollingWindow: 5 // Default window size for rolling statistics
+  rollingWindow: 5, // Default window size for rolling statistics
+  percentileRankWindow: 30 // Default window size for percentile rank calculation
 };
 
 // Helper function to calculate mean
@@ -34,6 +35,14 @@ function calculateStd(values: number[]): number {
   const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
   const variance = calculateMean(squaredDiffs);
   return Math.sqrt(variance);
+}
+
+// Helper function to calculate percentile rank
+// Returns the percentage of values in the array that are less than the target value
+function calculatePercentileRank(values: number[], targetValue: number): number {
+  if (values.length === 0) return 0;
+  const countLessThan = values.filter(val => val < targetValue).length;
+  return (countLessThan / values.length) * 100;
 }
 
 // Helper function to calculate rolling statistics for events
@@ -95,6 +104,21 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
         const pastMean = calculateMean(pastDeltaTimes);
         const pastStd = calculateStd(pastDeltaTimes);
         events[i].zDelta = pastStd > 0 ? (currentDelta - pastMean) / pastStd : 0;
+      }
+      
+      // Calculate percentile rank of zDelta compared to previous zDeltas
+      // Use a window of previous zDelta values (not including current)
+      const percentileWindowStart = Math.max(0, i - config.percentileRankWindow);
+      const percentileWindowEvents = events.slice(percentileWindowStart, i);
+      const previousZDeltas = percentileWindowEvents
+        .filter(e => e.zDelta !== undefined && isFinite(e.zDelta))
+        .map(e => e.zDelta!);
+      
+      const currentZDelta = events[i].zDelta ?? 0;
+      if (previousZDeltas.length === 0) {
+        events[i].zDeltaPercentileRank = 0;
+      } else {
+        events[i].zDeltaPercentileRank = calculatePercentileRank(previousZDeltas, currentZDelta);
       }
     }
   }
@@ -343,6 +367,17 @@ Alpine.data('app', (): AppData => ({
             valueFormatter: (params) => {
               if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
                 return params.value.toFixed(3);
+              }
+              return 'N/A';
+            }
+          },
+          { 
+            field: 'zDeltaPercentileRank', 
+            headerName: 'Z-Delta %ile',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(1);
               }
               return 'N/A';
             }

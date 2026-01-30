@@ -10,8 +10,10 @@ export interface ScanEvent {
   logMean?: number; // Natural log of rolling mean
   logStd?: number; // Natural log of rolling std
   zDelta?: number; // Z-score of delta time: (delta - mean) / std
+  zDeltaPercentileRank?: number; // Percentile rank of zDelta compared to previous zDeltas
 }
 
 export interface AppConfig {
   rollingWindow: number; // Window size for rolling statistics (default: 5)
+  percentileRankWindow: number; // Window size for percentile rank calculation (default: 30)
 }
