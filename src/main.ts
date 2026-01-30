@@ -4,7 +4,7 @@ import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
 import { buildScanTimeline, updateScanTimelineChart, scanTimelineMarkup } from './components/scanTimeline';
 import type { ScanEvent } from './types/event';
-import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController } from 'chart.js';
+import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController, BarController, BarElement } from 'chart.js';
 import { ModuleRegistry, GridOptions, createGrid, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
@@ -13,7 +13,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Register Chart.js components
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController);
+Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController, BarController, BarElement);
 
 // Generate UUID v4 using crypto API for better randomness
 function generateUUID(): string {
@@ -36,6 +36,7 @@ interface AppData {
 // Keyboard input buffer for scan events
 let scanBuffer = '';
 let reloadEventsCallback: (() => Promise<void>) | null = null;
+let deltaTimeHistogramChart: Chart | null = null;
 
 // Add document-level keyboard listener
 document.addEventListener('keydown', async (event: KeyboardEvent) => {
@@ -137,6 +138,9 @@ Alpine.data('app', (): AppData => ({
       
       // Update scan timeline chart
       updateScanTimelineChart(this.scanTimeline);
+      
+      // Update delta time histogram
+      updateDeltaTimeHistogram(this.events);
     } catch (error) {
       console.error('Error loading events:', error);
     }
@@ -208,28 +212,98 @@ Alpine.data('app', (): AppData => ({
   }
 }));
 
-// Initialize Chart.js Hello World Line Chart
-function initHelloWorldChart(): void {
-  const canvas = document.getElementById('helloWorldChart') as HTMLCanvasElement;
-  if (canvas) {
-    new Chart(canvas, {
-      type: 'line',
+// Create logarithmic buckets for delta times
+// Buckets will be: 0-0.1s, 0.1-0.5s, 0.5-1s, 1-2s, 2-5s, 5-10s, 10-30s, 30-60s, 60s+
+function createDeltaTimeBuckets(events: ScanEvent[]): { labels: string[]; counts: number[] } {
+  const buckets = [
+    { min: 0, max: 0.1, label: '0-0.1s' },
+    { min: 0.1, max: 0.5, label: '0.1-0.5s' },
+    { min: 0.5, max: 1, label: '0.5-1s' },
+    { min: 1, max: 2, label: '1-2s' },
+    { min: 2, max: 5, label: '2-5s' },
+    { min: 5, max: 10, label: '5-10s' },
+    { min: 10, max: 30, label: '10-30s' },
+    { min: 30, max: 60, label: '30-60s' },
+    { min: 60, max: Infinity, label: '60s+' }
+  ];
+
+  const counts = new Array(buckets.length).fill(0);
+
+  // Count events in each bucket (skip first event which has deltaTime = 0)
+  events.forEach((event) => {
+    if (event.deltaTime !== undefined && event.deltaTime > 0) {
+      const bucketIndex = buckets.findIndex(
+        (bucket) => event.deltaTime! >= bucket.min && event.deltaTime! < bucket.max
+      );
+      if (bucketIndex >= 0) {
+        counts[bucketIndex]++;
+      }
+    }
+  });
+
+  return {
+    labels: buckets.map((b) => b.label),
+    counts
+  };
+}
+
+// Initialize and update Delta Time Histogram
+function updateDeltaTimeHistogram(events: ScanEvent[]): void {
+  const canvas = document.getElementById('deltaTimeHistogram') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const { labels, counts } = createDeltaTimeBuckets(events);
+
+  if (deltaTimeHistogramChart) {
+    // Update existing chart
+    deltaTimeHistogramChart.data.labels = labels;
+    deltaTimeHistogramChart.data.datasets[0].data = counts;
+    deltaTimeHistogramChart.update();
+  } else {
+    // Create new chart
+    deltaTimeHistogramChart = new Chart(canvas, {
+      type: 'bar',
       data: {
-        labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        labels: labels,
         datasets: [{
-          label: 'Hello World Data',
-          data: [12, 19, 3, 5, 2, 3, 9],
+          label: 'Count',
+          data: counts,
+          backgroundColor: 'rgba(75, 192, 192, 0.6)',
           borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.1
+          borderWidth: 1
         }]
       },
       options: {
         responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2.5,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            },
+            title: {
+              display: true,
+              text: 'Count'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Delta Time Range'
+            }
+          }
+        },
         plugins: {
           title: {
             display: true,
-            text: 'Hello World Line Chart'
+            text: 'Distribution of Delta Times Between Scans'
+          },
+          legend: {
+            display: false
           }
         }
       }
@@ -240,5 +314,5 @@ function initHelloWorldChart(): void {
 // Start Alpine
 Alpine.start();
 
-// Initialize chart after Alpine starts
-initHelloWorldChart();
+// Initialize histogram after Alpine starts
+updateDeltaTimeHistogram([]);
