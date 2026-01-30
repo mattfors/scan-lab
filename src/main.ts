@@ -3,7 +3,7 @@ import './styles/scan-timeline.css';
 import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
 import { buildScanTimeline, updateScanTimelineChart, scanTimelineMarkup } from './components/scanTimeline';
-import type { ScanEvent } from './types/event';
+import type { ScanEvent, AppConfig } from './types/event';
 import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController, BarController, BarElement } from 'chart.js';
 import { ModuleRegistry, GridOptions, createGrid, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
@@ -14,6 +14,72 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Register Chart.js components
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, ScatterController, BarController, BarElement);
+
+// Application configuration
+const appConfig: AppConfig = {
+  rollingWindow: 5 // Default window size for rolling statistics
+};
+
+// Helper function to calculate mean
+function calculateMean(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sum = values.reduce((acc, val) => acc + val, 0);
+  return sum / values.length;
+}
+
+// Helper function to calculate standard deviation
+function calculateStd(values: number[]): number {
+  if (values.length === 0) return 0;
+  const mean = calculateMean(values);
+  const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
+  const variance = calculateMean(squaredDiffs);
+  return Math.sqrt(variance);
+}
+
+// Helper function to calculate rolling statistics for events
+function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
+  // Process events in chronological order (oldest first)
+  for (let i = 0; i < events.length; i++) {
+    // Set scan index
+    events[i].scanIndex = i;
+    
+    // Skip first event (no deltaTime to calculate stats on)
+    if (i === 0) {
+      events[i].rollingMean = 0;
+      events[i].rollingStd = 0;
+      events[i].coefficientOfVariation = 0;
+      events[i].logMean = -Infinity;
+      events[i].logStd = -Infinity;
+      continue;
+    }
+    
+    // Get the window of delta times (up to window size, or as many as available)
+    const windowStart = Math.max(0, i - config.rollingWindow + 1);
+    const windowEvents = events.slice(windowStart, i + 1);
+    
+    // Extract delta times (skip events without deltaTime or with deltaTime = 0)
+    const deltaTimes = windowEvents
+      .filter(e => e.deltaTime !== undefined && e.deltaTime > 0)
+      .map(e => e.deltaTime!);
+    
+    if (deltaTimes.length === 0) {
+      events[i].rollingMean = 0;
+      events[i].rollingStd = 0;
+      events[i].coefficientOfVariation = 0;
+      events[i].logMean = -Infinity;
+      events[i].logStd = -Infinity;
+    } else {
+      const mean = calculateMean(deltaTimes);
+      const std = calculateStd(deltaTimes);
+      
+      events[i].rollingMean = mean;
+      events[i].rollingStd = std;
+      events[i].coefficientOfVariation = mean !== 0 ? std / mean : 0;
+      events[i].logMean = mean > 0 ? Math.log(mean) : -Infinity;
+      events[i].logStd = std > 0 ? Math.log(std) : -Infinity;
+    }
+  }
+}
 
 // Generate UUID v4 using crypto API for better randomness
 function generateUUID(): string {
@@ -37,6 +103,9 @@ interface AppData {
 let scanBuffer = '';
 let reloadEventsCallback: (() => Promise<void>) | null = null;
 let deltaTimeHistogramChart: Chart | null = null;
+let rollingMeanChart: Chart | null = null;
+let rollingStdLogChart: Chart | null = null;
+let deltaVsIndexChart: Chart | null = null;
 
 // Add document-level keyboard listener
 document.addEventListener('keydown', async (event: KeyboardEvent) => {
@@ -128,6 +197,9 @@ Alpine.data('app', (): AppData => ({
         }
       }
       
+      // Calculate rolling statistics
+      calculateRollingStats(sortedEvents, appConfig);
+      
       // Reverse to show most recent first
       this.events = sortedEvents.reverse();
       
@@ -141,6 +213,9 @@ Alpine.data('app', (): AppData => ({
       
       // Update delta time histogram
       updateDeltaTimeHistogram(this.events);
+      
+      // Update new rolling statistics charts
+      updateRollingStatsCharts(sortedEvents.slice().reverse()); // Pass in chronological order
     } catch (error) {
       console.error('Error loading events:', error);
     }
@@ -170,6 +245,17 @@ Alpine.data('app', (): AppData => ({
       const gridOptions: GridOptions = {
         columnDefs: [
           { 
+            field: 'scanIndex', 
+            headerName: 'Index',
+            flex: 0.5,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null) {
+                return params.value.toString();
+              }
+              return '';
+            }
+          },
+          { 
             field: 'ts', 
             headerName: 'Time',
             flex: 2,
@@ -194,6 +280,61 @@ Alpine.data('app', (): AppData => ({
                 return params.value.toFixed(3);
               }
               return '0.000';
+            }
+          },
+          { 
+            field: 'rollingMean', 
+            headerName: 'Rolling Mean',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(3);
+              }
+              return 'N/A';
+            }
+          },
+          { 
+            field: 'rollingStd', 
+            headerName: 'Rolling Std',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(3);
+              }
+              return 'N/A';
+            }
+          },
+          { 
+            field: 'coefficientOfVariation', 
+            headerName: 'CV',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(3);
+              }
+              return 'N/A';
+            }
+          },
+          { 
+            field: 'logMean', 
+            headerName: 'Log(Mean)',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(3);
+              }
+              return 'N/A';
+            }
+          },
+          { 
+            field: 'logStd', 
+            headerName: 'Log(Std)',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(3);
+              }
+              return 'N/A';
             }
           }
         ],
@@ -278,7 +419,7 @@ function updateDeltaTimeHistogram(events: ScanEvent[]): void {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        aspectRatio: 2.5,
+        aspectRatio: 3.5,
         scales: {
           y: {
             beginAtZero: true,
@@ -311,8 +452,204 @@ function updateDeltaTimeHistogram(events: ScanEvent[]): void {
   }
 }
 
+// Update Rolling Mean Chart
+function updateRollingMeanChart(events: ScanEvent[]): void {
+  const canvas = document.getElementById('rollingMeanChart') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const indices = events.map(e => e.scanIndex ?? 0);
+  const means = events.map(e => e.rollingMean ?? 0);
+
+  if (rollingMeanChart) {
+    rollingMeanChart.data.labels = indices;
+    rollingMeanChart.data.datasets[0].data = means;
+    rollingMeanChart.update();
+  } else {
+    rollingMeanChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: indices,
+        datasets: [{
+          label: 'Rolling Mean',
+          data: means,
+          borderColor: 'rgb(54, 162, 235)',
+          backgroundColor: 'rgba(54, 162, 235, 0.1)',
+          tension: 0.1,
+          pointRadius: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 3.5,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Scan Index'
+            }
+          },
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Rolling Mean (s)'
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: 'Rolling Mean vs Index'
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+}
+
+// Update Rolling Std Log Chart
+function updateRollingStdLogChart(events: ScanEvent[]): void {
+  const canvas = document.getElementById('rollingStdLogChart') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const indices = events.map(e => e.scanIndex ?? 0);
+  const logStds = events.map(e => {
+    const val = e.logStd ?? -Infinity;
+    return isFinite(val) ? val : null;
+  });
+
+  if (rollingStdLogChart) {
+    rollingStdLogChart.data.labels = indices;
+    rollingStdLogChart.data.datasets[0].data = logStds;
+    rollingStdLogChart.update();
+  } else {
+    rollingStdLogChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: indices,
+        datasets: [{
+          label: 'Log(Rolling Std)',
+          data: logStds,
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.1)',
+          tension: 0.1,
+          pointRadius: 2,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 3.5,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Scan Index'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Log(Rolling Std)'
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: 'Rolling Std Log vs Index'
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+}
+
+// Update Delta vs Index Chart
+function updateDeltaVsIndexChart(events: ScanEvent[]): void {
+  const canvas = document.getElementById('deltaVsIndexChart') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const indices = events.map(e => e.scanIndex ?? 0);
+  const deltas = events.map(e => e.deltaTime ?? 0);
+
+  if (deltaVsIndexChart) {
+    deltaVsIndexChart.data.labels = indices;
+    deltaVsIndexChart.data.datasets[0].data = deltas;
+    deltaVsIndexChart.update();
+  } else {
+    deltaVsIndexChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: indices,
+        datasets: [{
+          label: 'Delta Time',
+          data: deltas,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.1)',
+          tension: 0.1,
+          pointRadius: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 3.5,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Scan Index'
+            }
+          },
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Delta Time (s)'
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: 'Delta vs Index'
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+}
+
+// Update all rolling statistics charts
+function updateRollingStatsCharts(events: ScanEvent[]): void {
+  updateRollingMeanChart(events);
+  updateRollingStdLogChart(events);
+  updateDeltaVsIndexChart(events);
+}
+
 // Start Alpine
 Alpine.start();
 
-// Initialize histogram after Alpine starts
+// Initialize charts after Alpine starts
 updateDeltaTimeHistogram([]);
+updateRollingMeanChart([]);
+updateRollingStdLogChart([]);
+updateDeltaVsIndexChart([]);

@@ -77,7 +77,8 @@ export function updateScanTimelineChart(scanTimeline: ScanTimeline): void {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        aspectRatio: 3.5,
         scales: {
           x: {
             type: 'linear',
