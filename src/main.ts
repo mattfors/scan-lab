@@ -50,6 +50,7 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].coefficientOfVariation = 0;
       events[i].logMean = -Infinity;
       events[i].logStd = -Infinity;
+      events[i].zDelta = 0;
       continue;
     }
     
@@ -68,6 +69,7 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].coefficientOfVariation = 0;
       events[i].logMean = -Infinity;
       events[i].logStd = -Infinity;
+      events[i].zDelta = 0;
     } else {
       const mean = calculateMean(deltaTimes);
       const std = calculateStd(deltaTimes);
@@ -77,6 +79,10 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].coefficientOfVariation = mean !== 0 ? std / mean : 0;
       events[i].logMean = mean > 0 ? Math.log(mean) : -Infinity;
       events[i].logStd = std > 0 ? Math.log(std) : -Infinity;
+      
+      // Calculate z-delta: (delta - mean) / std
+      const currentDelta = events[i].deltaTime ?? 0;
+      events[i].zDelta = std > 0 ? (currentDelta - mean) / std : 0;
     }
   }
 }
@@ -309,6 +315,17 @@ Alpine.data('app', (): AppData => ({
           { 
             field: 'logStd', 
             headerName: 'Log(Std)',
+            flex: 1,
+            valueFormatter: (params) => {
+              if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
+                return params.value.toFixed(3);
+              }
+              return 'N/A';
+            }
+          },
+          { 
+            field: 'zDelta', 
+            headerName: 'Z-Delta',
             flex: 1,
             valueFormatter: (params) => {
               if (params.value !== undefined && params.value !== null && isFinite(params.value)) {

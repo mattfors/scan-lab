@@ -9,6 +9,7 @@ export interface ScanEvent {
   coefficientOfVariation?: number; // CV = std / mean
   logMean?: number; // Natural log of rolling mean
   logStd?: number; // Natural log of rolling std
+  zDelta?: number; // Z-score of delta time: (delta - mean) / std
 }
 
 export interface AppConfig {
