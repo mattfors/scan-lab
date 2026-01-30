@@ -114,9 +114,9 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
         .filter(e => e.zDelta !== undefined && isFinite(e.zDelta))
         .map(e => e.zDelta!);
       
-      const currentZDelta = events[i].zDelta ?? 0;
-      if (previousZDeltas.length === 0) {
-        events[i].zDeltaPercentileRank = 0;
+      const currentZDelta = events[i].zDelta;
+      if (currentZDelta === undefined || !isFinite(currentZDelta) || previousZDeltas.length === 0) {
+        events[i].zDeltaPercentileRank = undefined;
       } else {
         events[i].zDeltaPercentileRank = calculatePercentileRank(previousZDeltas, currentZDelta);
       }
