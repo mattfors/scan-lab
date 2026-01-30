@@ -8,6 +8,7 @@ import { Chart, LineController, LineElement, PointElement, LinearScale, Category
 import { ModuleRegistry, GridOptions, createGrid, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import 'ag-grid-community/styles/ag-theme-balham.css';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -246,7 +247,7 @@ Alpine.data('app', (): AppData => ({
         columnDefs: [
           { 
             field: 'scanIndex', 
-            headerName: 'Index',
+            headerName: 'I',
             flex: 0.5,
             valueFormatter: (params) => {
               if (params.value !== undefined && params.value !== null) {
@@ -273,7 +274,7 @@ Alpine.data('app', (): AppData => ({
           },
           { 
             field: 'deltaTime', 
-            headerName: 'Delta Time (s)',
+            headerName: 'Delta (s)',
             flex: 1,
             valueFormatter: (params) => {
               if (params.value !== undefined && params.value !== null) {
@@ -284,7 +285,7 @@ Alpine.data('app', (): AppData => ({
           },
           { 
             field: 'rollingMean', 
-            headerName: 'Rolling Mean',
+            headerName: 'Mean',
             flex: 1,
             valueFormatter: (params) => {
               if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
@@ -295,7 +296,7 @@ Alpine.data('app', (): AppData => ({
           },
           { 
             field: 'rollingStd', 
-            headerName: 'Rolling Std',
+            headerName: 'Std',
             flex: 1,
             valueFormatter: (params) => {
               if (params.value !== undefined && params.value !== null && isFinite(params.value)) {
@@ -341,7 +342,7 @@ Alpine.data('app', (): AppData => ({
         rowData: this.events,
         defaultColDef: {
           sortable: true,
-          filter: true,
+          filter: false,
           resizable: true
         },
         domLayout: 'autoHeight',
@@ -483,7 +484,7 @@ function updateRollingMeanChart(events: ScanEvent[]): void {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        aspectRatio: 3.5,
+        aspectRatio: 1.5,
         scales: {
           x: {
             title: {
@@ -548,7 +549,7 @@ function updateRollingStdLogChart(events: ScanEvent[]): void {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        aspectRatio: 3.5,
+        aspectRatio: 1.5,
         scales: {
           x: {
             title: {
@@ -608,7 +609,7 @@ function updateDeltaVsIndexChart(events: ScanEvent[]): void {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        aspectRatio: 3.5,
+        aspectRatio: 1.5,
         scales: {
           x: {
             title: {
