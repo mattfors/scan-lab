@@ -200,7 +200,7 @@ Alpine.data('app', (): AppData => ({
       }
       
       // Update rolling statistics charts
-      updateRollingStatsCharts(sortedEvents.slice().reverse(), defaultRollingStatsConfig); // Pass in chronological order
+      updateRollingStatsCharts(sortedEvents.slice().reverse()); // Pass in chronological order
     } catch (error) {
       console.error('Error loading events:', error);
     }

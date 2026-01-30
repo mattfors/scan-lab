@@ -1,7 +1,10 @@
 import type { ScanEvent } from '../types/event';
 import { Chart } from 'chart.js';
 
-// Configuration for rolling statistics charts
+/**
+ * Configuration interface for rolling statistics charts.
+ * Allows customization of chart titles, axis labels, and min/max values.
+ */
 export interface RollingStatsConfig {
   rollingMean: {
     title: string;
@@ -23,7 +26,11 @@ export interface RollingStatsConfig {
   };
 }
 
-// Default configuration
+/**
+ * Default configuration for rolling statistics charts.
+ * - Rolling Std Log: y-axis from -6 to 1
+ * - Delta vs Index: y-axis from 0 to 5
+ */
 export const defaultRollingStatsConfig: RollingStatsConfig = {
   rollingMean: {
     title: 'Rolling Mean vs Index',
@@ -48,7 +55,12 @@ let rollingMeanChart: Chart | null = null;
 let rollingStdLogChart: Chart | null = null;
 let deltaVsIndexChart: Chart | null = null;
 
-// Update Rolling Mean Chart
+/**
+ * Updates the Rolling Mean chart with new data.
+ * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration including axis limits and labels
+ */
 export function updateRollingMeanChart(events: ScanEvent[], config: RollingStatsConfig): void {
   const canvas = document.getElementById('rollingMeanChart') as HTMLCanvasElement;
   if (!canvas) {
@@ -110,7 +122,13 @@ export function updateRollingMeanChart(events: ScanEvent[], config: RollingStats
   }
 }
 
-// Update Rolling Std Log Chart
+/**
+ * Updates the Rolling Std Log chart with new data.
+ * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
+ * Displays log of rolling standard deviation values, filtering out non-finite values.
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration including axis limits and labels
+ */
 export function updateRollingStdLogChart(events: ScanEvent[], config: RollingStatsConfig): void {
   const canvas = document.getElementById('rollingStdLogChart') as HTMLCanvasElement;
   if (!canvas) {
@@ -176,7 +194,13 @@ export function updateRollingStdLogChart(events: ScanEvent[], config: RollingSta
   }
 }
 
-// Update Delta vs Index Chart
+/**
+ * Updates the Delta vs Index chart with new data.
+ * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
+ * Displays delta time between consecutive scans.
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration including axis limits and labels
+ */
 export function updateDeltaVsIndexChart(events: ScanEvent[], config: RollingStatsConfig): void {
   const canvas = document.getElementById('deltaVsIndexChart') as HTMLCanvasElement;
   if (!canvas) {
@@ -238,7 +262,12 @@ export function updateDeltaVsIndexChart(events: ScanEvent[], config: RollingStat
   }
 }
 
-// Update all rolling statistics charts
+/**
+ * Updates all rolling statistics charts (Rolling Mean, Rolling Std Log, and Delta vs Index).
+ * Convenience function that calls all three chart update functions with the same data and config.
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration, defaults to defaultRollingStatsConfig
+ */
 export function updateRollingStatsCharts(events: ScanEvent[], config: RollingStatsConfig = defaultRollingStatsConfig): void {
   updateRollingMeanChart(events, config);
   updateRollingStdLogChart(events, config);
