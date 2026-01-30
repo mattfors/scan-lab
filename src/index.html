@@ -9,12 +9,6 @@
     <div x-data="app" x-init="init()">
         <button @click="fakeScan">Fake Scan</button>
         <button @click="clearData">Clear Local Data</button>
-        <div id="scan-timeline-root"></div>
-        
-        <!-- Delta Time Histogram -->
-        <div style="margin: 20px 0;">
-            <canvas id="deltaTimeHistogram"></canvas>
-        </div>
         
         <!-- Rolling Statistics Charts -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0;">
