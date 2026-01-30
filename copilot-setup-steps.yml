@@ -5,11 +5,11 @@ name: Scan Lab Setup
 description: Setup steps for the Scan Lab TypeScript web application
 
 steps:
-  - name: Install Node.js
+  - name: Verify Node.js
     description: Ensure Node.js v14 or higher is installed (v20 recommended)
     command: node --version
     
-  - name: Install npm
+  - name: Verify npm
     description: Ensure npm v6 or higher is installed
     command: npm --version
     
@@ -33,8 +33,8 @@ steps:
     port: 8080
 
 environment:
-  - NODE_VERSION: "20"
-  - PORT: "8080"
+  NODE_VERSION: "20"
+  PORT: "8080"
 
 prerequisites:
   - Node.js v14+ (v20 recommended)
