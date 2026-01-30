@@ -1,0 +1,48 @@
+# GitHub Copilot Setup Steps for Scan Lab
+# This file defines the setup steps required to get the development environment running
+
+name: Scan Lab Setup
+description: Setup steps for the Scan Lab TypeScript web application
+
+steps:
+  - name: Verify Node.js
+    description: Ensure Node.js v14 or higher is installed (v20 recommended)
+    command: node --version
+    
+  - name: Verify npm
+    description: Ensure npm v6 or higher is installed
+    command: npm --version
+    
+  - name: Install dependencies
+    description: Install all project dependencies from package.json
+    command: npm install
+    workingDirectory: .
+    
+  - name: Verify TypeScript
+    description: Check that TypeScript is available
+    command: npx tsc --version
+    
+  - name: Build project
+    description: Build the project to ensure everything compiles correctly
+    command: npm run build
+    
+  - name: Start development server
+    description: Start webpack dev server on port 8080 (optional for development)
+    command: npm run dev
+    background: true
+    port: 8080
+
+environment:
+  NODE_VERSION: "20"
+  PORT: "8080"
+
+prerequisites:
+  - Node.js v14+ (v20 recommended)
+  - npm v6+
+  - Modern web browser
+
+notes: |
+  - The development server runs on port 8080 and automatically opens a browser
+  - The build output is placed in the dist/ directory
+  - This project uses webpack for bundling and TypeScript for type safety
+  - PouchDB is used for client-side data persistence
