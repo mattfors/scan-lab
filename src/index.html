@@ -10,6 +10,19 @@
         <button @click="fakeScan">Fake Scan</button>
         <button @click="clearData">Clear Local Data</button>
         
+        <!-- Speed Metrics Charts (New Row) -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0;">
+            <div>
+                <canvas id="scanSpeedChart"></canvas>
+            </div>
+            <div>
+                <canvas id="accelerationChart"></canvas>
+            </div>
+            <div>
+                <canvas id="speedVariabilityChart"></canvas>
+            </div>
+        </div>
+        
         <!-- Rolling Statistics Charts -->
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0;">
             <div>

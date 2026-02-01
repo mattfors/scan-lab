@@ -52,6 +52,20 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
     // Set scan index
     events[i].scanIndex = i;
     
+    // Calculate scan speed (scans per minute)
+    if (i === 0 || !events[i].deltaTime || events[i].deltaTime === 0) {
+      events[i].scanSpeed = 0;
+      events[i].acceleration = 0;
+    } else {
+      events[i].scanSpeed = 60 / events[i].deltaTime!; // Convert seconds to minutes
+      // Calculate acceleration (change in speed)
+      if (i === 1 || !events[i - 1].scanSpeed) {
+        events[i].acceleration = 0;
+      } else {
+        events[i].acceleration = events[i].scanSpeed! - events[i - 1].scanSpeed!;
+      }
+    }
+    
     // Skip first event (no deltaTime to calculate stats on)
     if (i === 0) {
       events[i].rollingMean = 0;
@@ -60,6 +74,7 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].logMean = -Infinity;
       events[i].logStd = -Infinity;
       events[i].zDelta = 0;
+      events[i].speedVariability = 0;
       continue;
     }
     
@@ -79,6 +94,7 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].logMean = -Infinity;
       events[i].logStd = -Infinity;
       events[i].zDelta = 0;
+      events[i].speedVariability = 0;
     } else {
       const mean = calculateMean(deltaTimes);
       const std = calculateStd(deltaTimes);
@@ -88,6 +104,19 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].coefficientOfVariation = mean !== 0 ? std / mean : 0;
       events[i].logMean = mean > 0 ? Math.log(mean) : -Infinity;
       events[i].logStd = std > 0 ? Math.log(std) : -Infinity;
+      
+      // Calculate speed variability (coefficient of variation of speeds in the rolling window)
+      const windowSpeeds = windowEvents
+        .filter(e => e.scanSpeed !== undefined && e.scanSpeed > 0 && isFinite(e.scanSpeed))
+        .map(e => e.scanSpeed!);
+      
+      if (windowSpeeds.length === 0) {
+        events[i].speedVariability = 0;
+      } else {
+        const speedMean = calculateMean(windowSpeeds);
+        const speedStd = calculateStd(windowSpeeds);
+        events[i].speedVariability = speedMean !== 0 ? speedStd / speedMean : 0;
+      }
       
       // Calculate z-delta using only past deltas (not including current event)
       // This measures how unusual the current delta is compared to recent history
