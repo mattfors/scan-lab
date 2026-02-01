@@ -67,7 +67,7 @@ export const defaultRollingStatsConfig: RollingStatsConfig = {
   },
   acceleration: {
     title: 'Acceleration vs Index',
-    yAxisLabel: 'Acceleration (scans/min²)'
+    yAxisLabel: 'Δ Speed (scans/min)'
   },
   speedVariability: {
     title: 'Speed Variability vs Index',
