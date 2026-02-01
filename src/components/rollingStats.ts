@@ -109,6 +109,48 @@ let deltaVsIndexChart: Chart | null = null;
 let zDeltaChart: Chart | null = null;
 
 /**
+ * Maps a log std value to a color in a gradient from green to red.
+ * Values from -1 to -6 map to green -> yellow -> orange -> red.
+ * @param value - The log std value
+ * @returns RGB color string
+ */
+function getColorForLogStd(value: number | null): string {
+  if (value === null || !isFinite(value)) {
+    return 'rgb(128, 128, 128)'; // Gray for null/invalid values
+  }
+  
+  // Clamp value to range [-6, -1]
+  const clampedValue = Math.max(-6, Math.min(-1, value));
+  
+  // Normalize to [0, 1] where 0 = -6 (red) and 1 = -1 (green)
+  const normalized = (clampedValue + 6) / 5;
+  
+  let r: number, g: number, b: number;
+  
+  if (normalized < 0.33) {
+    // Red to Orange (0 to 0.33)
+    const t = normalized / 0.33;
+    r = 255;
+    g = Math.round(165 * t); // 0 to 165 (orange)
+    b = 0;
+  } else if (normalized < 0.67) {
+    // Orange to Yellow (0.33 to 0.67)
+    const t = (normalized - 0.33) / 0.34;
+    r = 255;
+    g = Math.round(165 + (255 - 165) * t); // 165 to 255
+    b = 0;
+  } else {
+    // Yellow to Green (0.67 to 1)
+    const t = (normalized - 0.67) / 0.33;
+    r = Math.round(255 * (1 - t)); // 255 to 0
+    g = 255;
+    b = 0;
+  }
+  
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
  * Updates the Scan Speed chart with new data.
  * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
  * Displays scan speed in scans per minute.
@@ -410,9 +452,26 @@ export function updateRollingStdLogChart(events: ScanEvent[], config: RollingSta
     return isFinite(val) ? val : null;
   });
 
+  // Generate colors for each point based on its value
+  const pointColors = logStds.map(val => getColorForLogStd(val));
+  const borderColors = logStds.map(val => getColorForLogStd(val));
+
   if (rollingStdLogChart) {
     rollingStdLogChart.data.labels = indices;
     rollingStdLogChart.data.datasets[0].data = logStds;
+    // @ts-ignore - Chart.js types don't fully support these properties
+    rollingStdLogChart.data.datasets[0].pointBackgroundColor = pointColors;
+    // @ts-ignore - Chart.js types don't fully support these properties
+    rollingStdLogChart.data.datasets[0].pointBorderColor = borderColors;
+    // @ts-ignore - Chart.js types don't fully support these properties
+    rollingStdLogChart.data.datasets[0].segment = {
+      borderColor: (ctx: any) => {
+        const p0 = ctx.p0;
+        const p1 = ctx.p1;
+        // Use the color of the starting point of the segment
+        return p0.parsed && p0.parsed.y !== null ? getColorForLogStd(p0.parsed.y) : 'rgb(128, 128, 128)';
+      }
+    };
     rollingStdLogChart.update();
   } else {
     rollingStdLogChart = new Chart(canvas, {
@@ -422,13 +481,22 @@ export function updateRollingStdLogChart(events: ScanEvent[], config: RollingSta
         datasets: [{
           label: 'Log(Rolling Std)',
           data: logStds,
-          borderColor: 'rgb(255, 99, 132)',
+          pointBackgroundColor: pointColors,
+          pointBorderColor: borderColors,
           backgroundColor: 'rgba(255, 99, 132, 0.1)',
           tension: 0.1,
-          pointRadius: 2,
-          spanGaps: true
+          pointRadius: 3,
+          spanGaps: true,
+          segment: {
+            borderColor: (ctx: any) => {
+              const p0 = ctx.p0;
+              const p1 = ctx.p1;
+              // Use the color of the starting point of the segment
+              return p0.parsed && p0.parsed.y !== null ? getColorForLogStd(p0.parsed.y) : 'rgb(128, 128, 128)';
+            }
+          }
         }]
-      },
+      } as any,
       options: {
         responsive: true,
         maintainAspectRatio: true,
