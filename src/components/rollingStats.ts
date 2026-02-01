@@ -6,6 +6,24 @@ import { Chart } from 'chart.js';
  * Allows customization of chart titles, axis labels, and min/max values.
  */
 export interface RollingStatsConfig {
+  scanSpeed: {
+    title: string;
+    yAxisLabel: string;
+    min?: number;
+    max?: number;
+  };
+  acceleration: {
+    title: string;
+    yAxisLabel: string;
+    min?: number;
+    max?: number;
+  };
+  speedVariability: {
+    title: string;
+    yAxisLabel: string;
+    min?: number;
+    max?: number;
+  };
   rollingMean: {
     title: string;
     yAxisLabel: string;
@@ -34,11 +52,29 @@ export interface RollingStatsConfig {
 
 /**
  * Default configuration for rolling statistics charts.
+ * - Scan Speed: y-axis from 0 (auto-scaled)
+ * - Acceleration: y-axis centered around 0
+ * - Speed Variability: y-axis from 0 to 1 (coefficient of variation)
  * - Rolling Std Log: y-axis from -6 to 1
  * - Delta vs Index: y-axis from 0 to 5
  * - Z-Delta: y-axis from -3 to 3
  */
 export const defaultRollingStatsConfig: RollingStatsConfig = {
+  scanSpeed: {
+    title: 'Scan Speed vs Index',
+    yAxisLabel: 'Speed (scans/min)',
+    min: 0
+  },
+  acceleration: {
+    title: 'Acceleration vs Index',
+    yAxisLabel: 'Acceleration (scans/min²)'
+  },
+  speedVariability: {
+    title: 'Speed Variability vs Index',
+    yAxisLabel: 'Coefficient of Variation',
+    min: 0,
+    max: 1
+  },
   rollingMean: {
     title: 'Rolling Mean vs Index',
     yAxisLabel: 'Rolling Mean (s)',
@@ -64,10 +100,229 @@ export const defaultRollingStatsConfig: RollingStatsConfig = {
   }
 };
 
+let scanSpeedChart: Chart | null = null;
+let accelerationChart: Chart | null = null;
+let speedVariabilityChart: Chart | null = null;
 let rollingMeanChart: Chart | null = null;
 let rollingStdLogChart: Chart | null = null;
 let deltaVsIndexChart: Chart | null = null;
 let zDeltaChart: Chart | null = null;
+
+/**
+ * Updates the Scan Speed chart with new data.
+ * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
+ * Displays scan speed in scans per minute.
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration including axis limits and labels
+ */
+export function updateScanSpeedChart(events: ScanEvent[], config: RollingStatsConfig): void {
+  const canvas = document.getElementById('scanSpeedChart') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const indices = events.map(e => e.scanIndex ?? 0);
+  const speeds = events.map(e => {
+    const val = e.scanSpeed ?? 0;
+    return isFinite(val) && val > 0 ? val : null;
+  });
+
+  if (scanSpeedChart) {
+    scanSpeedChart.data.labels = indices;
+    scanSpeedChart.data.datasets[0].data = speeds;
+    scanSpeedChart.update();
+  } else {
+    scanSpeedChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: indices,
+        datasets: [{
+          label: 'Scan Speed',
+          data: speeds,
+          borderColor: 'rgb(255, 159, 64)',
+          backgroundColor: 'rgba(255, 159, 64, 0.1)',
+          tension: 0.1,
+          pointRadius: 2,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Scan Index'
+            }
+          },
+          y: {
+            min: config.scanSpeed.min,
+            max: config.scanSpeed.max,
+            title: {
+              display: true,
+              text: config.scanSpeed.yAxisLabel
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: config.scanSpeed.title
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+}
+
+/**
+ * Updates the Acceleration chart with new data.
+ * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
+ * Displays acceleration (change in scan speed).
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration including axis limits and labels
+ */
+export function updateAccelerationChart(events: ScanEvent[], config: RollingStatsConfig): void {
+  const canvas = document.getElementById('accelerationChart') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const indices = events.map(e => e.scanIndex ?? 0);
+  const accelerations = events.map(e => {
+    const val = e.acceleration ?? 0;
+    return isFinite(val) ? val : null;
+  });
+
+  if (accelerationChart) {
+    accelerationChart.data.labels = indices;
+    accelerationChart.data.datasets[0].data = accelerations;
+    accelerationChart.update();
+  } else {
+    accelerationChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: indices,
+        datasets: [{
+          label: 'Acceleration',
+          data: accelerations,
+          borderColor: 'rgb(201, 203, 207)',
+          backgroundColor: 'rgba(201, 203, 207, 0.1)',
+          tension: 0.1,
+          pointRadius: 2,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Scan Index'
+            }
+          },
+          y: {
+            min: config.acceleration.min,
+            max: config.acceleration.max,
+            title: {
+              display: true,
+              text: config.acceleration.yAxisLabel
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: config.acceleration.title
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+}
+
+/**
+ * Updates the Speed Variability chart with new data.
+ * Creates a new chart if one doesn't exist, otherwise updates the existing chart with new data.
+ * Displays coefficient of variation of speed over rolling window.
+ * @param events - Array of scan events in chronological order
+ * @param config - Chart configuration including axis limits and labels
+ */
+export function updateSpeedVariabilityChart(events: ScanEvent[], config: RollingStatsConfig): void {
+  const canvas = document.getElementById('speedVariabilityChart') as HTMLCanvasElement;
+  if (!canvas) {
+    return;
+  }
+
+  const indices = events.map(e => e.scanIndex ?? 0);
+  const variabilities = events.map(e => {
+    const val = e.speedVariability ?? 0;
+    return isFinite(val) ? val : null;
+  });
+
+  if (speedVariabilityChart) {
+    speedVariabilityChart.data.labels = indices;
+    speedVariabilityChart.data.datasets[0].data = variabilities;
+    speedVariabilityChart.update();
+  } else {
+    speedVariabilityChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: indices,
+        datasets: [{
+          label: 'Speed Variability',
+          data: variabilities,
+          borderColor: 'rgb(54, 162, 235)',
+          backgroundColor: 'rgba(54, 162, 235, 0.1)',
+          tension: 0.1,
+          pointRadius: 2,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Scan Index'
+            }
+          },
+          y: {
+            min: config.speedVariability.min,
+            max: config.speedVariability.max,
+            title: {
+              display: true,
+              text: config.speedVariability.yAxisLabel
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: config.speedVariability.title
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+}
 
 /**
  * Updates the Rolling Mean chart with new data.
@@ -349,12 +604,15 @@ export function updateZDeltaChart(events: ScanEvent[], config: RollingStatsConfi
 }
 
 /**
- * Updates all rolling statistics charts (Rolling Mean, Rolling Std Log, Delta vs Index, and Z-Delta).
- * Convenience function that calls all four chart update functions with the same data and config.
+ * Updates all rolling statistics charts.
+ * Convenience function that calls all chart update functions with the same data and config.
  * @param events - Array of scan events in chronological order
  * @param config - Chart configuration, defaults to defaultRollingStatsConfig
  */
 export function updateRollingStatsCharts(events: ScanEvent[], config: RollingStatsConfig = defaultRollingStatsConfig): void {
+  updateScanSpeedChart(events, config);
+  updateAccelerationChart(events, config);
+  updateSpeedVariabilityChart(events, config);
   updateRollingMeanChart(events, config);
   updateRollingStdLogChart(events, config);
   updateDeltaVsIndexChart(events, config);
