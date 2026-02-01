@@ -457,7 +457,7 @@ export function updateRollingMeanChart(events: ScanEvent[], config: RollingStats
           data: means,
           pointBackgroundColor: pointColors,
           pointBorderColor: pointColors,
-          backgroundColor: 'rgba(54, 162, 235, 0.1)',
+          backgroundColor: 'rgba(128, 128, 128, 0.05)',
           tension: 0.1,
           pointRadius: 3,
           spanGaps: true,
@@ -469,7 +469,7 @@ export function updateRollingMeanChart(events: ScanEvent[], config: RollingStats
             }
           }
         }]
-      } as any,
+      },
       options: {
         responsive: true,
         maintainAspectRatio: true,
