@@ -109,6 +109,11 @@ let deltaVsIndexChart: Chart | null = null;
 let zDeltaChart: Chart | null = null;
 
 /**
+ * Default color for null or invalid data points.
+ */
+const DEFAULT_COLOR = 'rgb(128, 128, 128)';
+
+/**
  * Maps a log std value to a color in a gradient from green to red.
  * Values from -1 to -6 map to green -> yellow -> orange -> red.
  * @param value - The log std value
@@ -116,7 +121,7 @@ let zDeltaChart: Chart | null = null;
  */
 function getColorForLogStd(value: number | null): string {
   if (value === null || !isFinite(value)) {
-    return 'rgb(128, 128, 128)'; // Gray for null/invalid values
+    return DEFAULT_COLOR; // Gray for null/invalid values
   }
   
   // Clamp value to range [-6, -1]
@@ -454,22 +459,20 @@ export function updateRollingStdLogChart(events: ScanEvent[], config: RollingSta
 
   // Generate colors for each point based on its value
   const pointColors = logStds.map(val => getColorForLogStd(val));
-  const borderColors = logStds.map(val => getColorForLogStd(val));
 
   if (rollingStdLogChart) {
     rollingStdLogChart.data.labels = indices;
     rollingStdLogChart.data.datasets[0].data = logStds;
-    // @ts-ignore - Chart.js types don't fully support these properties
+    // @ts-expect-error - Chart.js types don't fully support dynamic colors per point
     rollingStdLogChart.data.datasets[0].pointBackgroundColor = pointColors;
-    // @ts-ignore - Chart.js types don't fully support these properties
-    rollingStdLogChart.data.datasets[0].pointBorderColor = borderColors;
-    // @ts-ignore - Chart.js types don't fully support these properties
+    // @ts-expect-error - Chart.js types don't fully support dynamic colors per point
+    rollingStdLogChart.data.datasets[0].pointBorderColor = pointColors;
+    // @ts-expect-error - Chart.js types don't fully support segment styling
     rollingStdLogChart.data.datasets[0].segment = {
       borderColor: (ctx: any) => {
         const p0 = ctx.p0;
-        const p1 = ctx.p1;
         // Use the color of the starting point of the segment
-        return p0.parsed && p0.parsed.y !== null ? getColorForLogStd(p0.parsed.y) : 'rgb(128, 128, 128)';
+        return p0.parsed && p0.parsed.y !== null ? getColorForLogStd(p0.parsed.y) : DEFAULT_COLOR;
       }
     };
     rollingStdLogChart.update();
@@ -482,7 +485,7 @@ export function updateRollingStdLogChart(events: ScanEvent[], config: RollingSta
           label: 'Log(Rolling Std)',
           data: logStds,
           pointBackgroundColor: pointColors,
-          pointBorderColor: borderColors,
+          pointBorderColor: pointColors,
           backgroundColor: 'rgba(255, 99, 132, 0.1)',
           tension: 0.1,
           pointRadius: 3,
@@ -490,9 +493,8 @@ export function updateRollingStdLogChart(events: ScanEvent[], config: RollingSta
           segment: {
             borderColor: (ctx: any) => {
               const p0 = ctx.p0;
-              const p1 = ctx.p1;
               // Use the color of the starting point of the segment
-              return p0.parsed && p0.parsed.y !== null ? getColorForLogStd(p0.parsed.y) : 'rgb(128, 128, 128)';
+              return p0.parsed && p0.parsed.y !== null ? getColorForLogStd(p0.parsed.y) : DEFAULT_COLOR;
             }
           }
         }]
