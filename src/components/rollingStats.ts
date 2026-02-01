@@ -67,7 +67,7 @@ export const defaultRollingStatsConfig: RollingStatsConfig = {
   },
   acceleration: {
     title: 'Acceleration vs Index',
-    yAxisLabel: 'Δ Speed (scans/min)'
+    yAxisLabel: 'Δ Speed (scans/s)'
   },
   speedVariability: {
     title: 'Speed Variability vs Index',
@@ -149,6 +149,48 @@ function getColorForLogStd(value: number | null): string {
     const t = (normalized - 0.67) / 0.33;
     r = Math.round(255 * (1 - t)); // 255 to 0
     g = 255;
+    b = 0;
+  }
+  
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
+ * Maps a rolling mean value to a color in a gradient from green to red.
+ * Values from 0.6 to higher map to green -> yellow -> orange -> red.
+ * @param value - The rolling mean value
+ * @returns RGB color string
+ */
+function getColorForRollingMean(value: number | null): string {
+  if (value === null || !isFinite(value)) {
+    return DEFAULT_COLOR; // Gray for null/invalid values
+  }
+  
+  // Color mapping: green (0.6) -> yellow (1.0) -> orange (1.5) -> red (2.0+)
+  let r: number, g: number, b: number;
+  
+  if (value < 0.6) {
+    // Below threshold, use green
+    r = 0;
+    g = 255;
+    b = 0;
+  } else if (value < 1.0) {
+    // Green to Yellow (0.6 to 1.0)
+    const t = (value - 0.6) / 0.4;
+    r = Math.round(255 * t); // 0 to 255
+    g = 255;
+    b = 0;
+  } else if (value < 1.5) {
+    // Yellow to Orange (1.0 to 1.5)
+    const t = (value - 1.0) / 0.5;
+    r = 255;
+    g = Math.round(255 - 90 * t); // 255 to 165 (orange)
+    b = 0;
+  } else {
+    // Orange to Red (1.5 to 2.0+)
+    const t = Math.min((value - 1.5) / 0.5, 1.0);
+    r = 255;
+    g = Math.round(165 * (1 - t)); // 165 to 0
     b = 0;
   }
   
@@ -386,9 +428,24 @@ export function updateRollingMeanChart(events: ScanEvent[], config: RollingStats
   const indices = events.map(e => e.scanIndex ?? 0);
   const means = events.map(e => e.rollingMean ?? 0);
 
+  // Generate colors for each point based on its value
+  const pointColors = means.map(val => getColorForRollingMean(val));
+
   if (rollingMeanChart) {
     rollingMeanChart.data.labels = indices;
     rollingMeanChart.data.datasets[0].data = means;
+    // @ts-expect-error - Chart.js types don't fully support dynamic colors per point
+    rollingMeanChart.data.datasets[0].pointBackgroundColor = pointColors;
+    // @ts-expect-error - Chart.js types don't fully support dynamic colors per point
+    rollingMeanChart.data.datasets[0].pointBorderColor = pointColors;
+    // @ts-expect-error - Chart.js types don't fully support segment styling
+    rollingMeanChart.data.datasets[0].segment = {
+      borderColor: (ctx: any) => {
+        const p0 = ctx.p0;
+        // Use the color of the starting point of the segment
+        return p0.parsed && p0.parsed.y !== null ? getColorForRollingMean(p0.parsed.y) : DEFAULT_COLOR;
+      }
+    };
     rollingMeanChart.update();
   } else {
     rollingMeanChart = new Chart(canvas, {
@@ -398,12 +455,21 @@ export function updateRollingMeanChart(events: ScanEvent[], config: RollingStats
         datasets: [{
           label: 'Rolling Mean',
           data: means,
-          borderColor: 'rgb(54, 162, 235)',
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
           backgroundColor: 'rgba(54, 162, 235, 0.1)',
           tension: 0.1,
-          pointRadius: 2
+          pointRadius: 3,
+          spanGaps: true,
+          segment: {
+            borderColor: (ctx: any) => {
+              const p0 = ctx.p0;
+              // Use the color of the starting point of the segment
+              return p0.parsed && p0.parsed.y !== null ? getColorForRollingMean(p0.parsed.y) : DEFAULT_COLOR;
+            }
+          }
         }]
-      },
+      } as any,
       options: {
         responsive: true,
         maintainAspectRatio: true,

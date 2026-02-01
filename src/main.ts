@@ -58,11 +58,12 @@ function calculateRollingStats(events: ScanEvent[], config: AppConfig): void {
       events[i].acceleration = 0;
     } else {
       events[i].scanSpeed = 60 / events[i].deltaTime!; // Convert seconds to minutes
-      // Calculate acceleration (change in speed)
+      // Calculate acceleration (change in speed in scans per second)
       if (i === 1 || !events[i - 1].scanSpeed) {
         events[i].acceleration = 0;
       } else {
-        events[i].acceleration = events[i].scanSpeed! - events[i - 1].scanSpeed!;
+        // Convert from scans/min to scans/s by dividing by 60
+        events[i].acceleration = (events[i].scanSpeed! - events[i - 1].scanSpeed!) / 60;
       }
     }
     
