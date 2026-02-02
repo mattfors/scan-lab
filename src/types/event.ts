@@ -11,8 +11,8 @@ export interface ScanEvent {
   logStd?: number; // Natural log of rolling std
   zDelta?: number; // Z-score of delta time: (delta - mean) / std
   zDeltaPercentileRank?: number; // Percentile rank of zDelta compared to previous zDeltas
-  scanSpeed?: number; // Speed in scans per minute (60 / deltaTime)
-  acceleration?: number; // Change in speed from previous event
+  scanSpeed?: number; // Speed in scans per second (1 / deltaTime)
+  acceleration?: number; // Change in speed between consecutive events (scans/s)
   speedVariability?: number; // Coefficient of variation of speed over rolling window
 }
 
