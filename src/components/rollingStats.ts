@@ -62,7 +62,7 @@ export interface RollingStatsConfig {
 export const defaultRollingStatsConfig: RollingStatsConfig = {
   scanSpeed: {
     title: 'Scan Speed vs Index',
-    yAxisLabel: 'Speed (scans/min)',
+    yAxisLabel: 'Speed (scans/s)',
     min: 0
   },
   acceleration: {
