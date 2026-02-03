@@ -159,7 +159,7 @@ function getColorForLogStd(value: number | null): string {
 /**
  * Maps a rolling mean value to a color in a gradient from red to green.
  * Values from low to high map to red -> orange -> yellow -> green.
- * Low values (below 0.2) are red, starts changing colors at 0.4.
+ * Low values (below 0.4) are red, starts changing colors at 0.4.
  * @param value - The rolling mean value
  * @returns RGB color string
  */
@@ -168,17 +168,12 @@ function getColorForRollingMean(value: number | null): string {
     return DEFAULT_COLOR; // Gray for null/invalid values
   }
   
-  // Color mapping: red (< 0.2) -> starts changing at 0.4 -> green (higher values)
+  // Color mapping: red (< 0.4) -> starts changing at 0.4 -> green (higher values)
   // Low values are red, high values are green
   let r: number, g: number, b: number;
   
-  if (value < 0.2) {
+  if (value < 0.4) {
     // Below threshold, use red
-    r = 255;
-    g = 0;
-    b = 0;
-  } else if (value < 0.4) {
-    // Stay red between 0.2 and 0.4 (no color change)
     r = 255;
     g = 0;
     b = 0;
