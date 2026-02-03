@@ -63,7 +63,8 @@ export const defaultRollingStatsConfig: RollingStatsConfig = {
   scanSpeed: {
     title: 'Scan Speed vs Index',
     yAxisLabel: 'Speed (scans/s)',
-    min: 0
+    min: 0,
+    max: 10
   },
   acceleration: {
     title: 'Acceleration vs Index',
@@ -156,8 +157,9 @@ function getColorForLogStd(value: number | null): string {
 }
 
 /**
- * Maps a rolling mean value to a color in a gradient from green to red.
- * Values from 0.6 to higher map to green -> yellow -> orange -> red.
+ * Maps a rolling mean value to a color in a gradient from red to green.
+ * Values from low to high map to red -> orange -> yellow -> green.
+ * Low values are red, high values are green (inverted from previous version).
  * @param value - The rolling mean value
  * @returns RGB color string
  */
@@ -166,29 +168,73 @@ function getColorForRollingMean(value: number | null): string {
     return DEFAULT_COLOR; // Gray for null/invalid values
   }
   
-  // Color mapping: green (0.6) -> yellow (1.0) -> orange (1.5) -> red (2.0+)
+  // Color mapping: red (0.6) -> orange (1.0) -> yellow (1.5) -> green (2.0+)
+  // Low values are red, high values are green
   let r: number, g: number, b: number;
   
   if (value < 0.6) {
-    // Below threshold, use green
-    r = 0;
-    g = 255;
+    // Below threshold, use red
+    r = 255;
+    g = 0;
     b = 0;
   } else if (value < 1.0) {
-    // Green to Yellow (0.6 to 1.0)
+    // Red to Orange (0.6 to 1.0)
     const t = (value - 0.6) / 0.4;
+    r = 255;
+    g = Math.round(165 * t); // 0 to 165 (orange)
+    b = 0;
+  } else if (value < 1.5) {
+    // Orange to Yellow (1.0 to 1.5)
+    const t = (value - 1.0) / 0.5;
+    r = 255;
+    g = Math.round(165 + 90 * t); // 165 to 255 (yellow)
+    b = 0;
+  } else {
+    // Yellow to Green (1.5 to 2.0+)
+    const t = Math.min((value - 1.5) / 0.5, 1.0);
+    r = Math.round(255 * (1 - t)); // 255 to 0
+    g = 255;
+    b = 0;
+  }
+  
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
+ * Maps a scan speed value to a color in a gradient from green to red.
+ * Values from 0 to 7 map to green -> yellow -> orange -> red.
+ * Low values (0) are green, high values (7+) are red.
+ * @param value - The scan speed value
+ * @returns RGB color string
+ */
+function getColorForScanSpeed(value: number | null): string {
+  if (value === null || !isFinite(value)) {
+    return DEFAULT_COLOR; // Gray for null/invalid values
+  }
+  
+  // Clamp value to range [0, 7]
+  const clampedValue = Math.max(0, Math.min(7, value));
+  
+  // Normalize to [0, 1] where 0 = green and 1 = red
+  const normalized = clampedValue / 7;
+  
+  let r: number, g: number, b: number;
+  
+  if (normalized < 0.33) {
+    // Green to Yellow (0 to 0.33)
+    const t = normalized / 0.33;
     r = Math.round(255 * t); // 0 to 255
     g = 255;
     b = 0;
-  } else if (value < 1.5) {
-    // Yellow to Orange (1.0 to 1.5)
-    const t = (value - 1.0) / 0.5;
+  } else if (normalized < 0.67) {
+    // Yellow to Orange (0.33 to 0.67)
+    const t = (normalized - 0.33) / 0.34;
     r = 255;
     g = Math.round(255 - 90 * t); // 255 to 165 (orange)
     b = 0;
   } else {
-    // Orange to Red (1.5 to 2.0+)
-    const t = Math.min((value - 1.5) / 0.5, 1.0);
+    // Orange to Red (0.67 to 1)
+    const t = (normalized - 0.67) / 0.33;
     r = 255;
     g = Math.round(165 * (1 - t)); // 165 to 0
     b = 0;
@@ -216,9 +262,24 @@ export function updateScanSpeedChart(events: ScanEvent[], config: RollingStatsCo
     return isFinite(val) && val > 0 ? val : null;
   });
 
+  // Generate colors for each point based on its value
+  const pointColors = speeds.map(val => getColorForScanSpeed(val));
+
   if (scanSpeedChart) {
     scanSpeedChart.data.labels = indices;
     scanSpeedChart.data.datasets[0].data = speeds;
+    // @ts-expect-error - Chart.js types don't fully support dynamic colors per point
+    scanSpeedChart.data.datasets[0].pointBackgroundColor = pointColors;
+    // @ts-expect-error - Chart.js types don't fully support dynamic colors per point
+    scanSpeedChart.data.datasets[0].pointBorderColor = pointColors;
+    // @ts-expect-error - Chart.js types don't fully support segment styling
+    scanSpeedChart.data.datasets[0].segment = {
+      borderColor: (ctx: any) => {
+        const p0 = ctx.p0;
+        // Use the color of the starting point of the segment
+        return p0.parsed && p0.parsed.y !== null ? getColorForScanSpeed(p0.parsed.y) : DEFAULT_COLOR;
+      }
+    };
     scanSpeedChart.update();
   } else {
     scanSpeedChart = new Chart(canvas, {
@@ -228,11 +289,19 @@ export function updateScanSpeedChart(events: ScanEvent[], config: RollingStatsCo
         datasets: [{
           label: 'Scan Speed',
           data: speeds,
-          borderColor: 'rgb(255, 159, 64)',
-          backgroundColor: 'rgba(255, 159, 64, 0.1)',
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          backgroundColor: 'rgba(128, 128, 128, 0.05)',
           tension: 0.1,
-          pointRadius: 2,
-          spanGaps: true
+          pointRadius: 3,
+          spanGaps: true,
+          segment: {
+            borderColor: (ctx: any) => {
+              const p0 = ctx.p0;
+              // Use the color of the starting point of the segment
+              return p0.parsed && p0.parsed.y !== null ? getColorForScanSpeed(p0.parsed.y) : DEFAULT_COLOR;
+            }
+          }
         }]
       },
       options: {
