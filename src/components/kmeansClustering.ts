@@ -52,26 +52,14 @@ export function kMeansClustering(data: number[], maxIterations: number = 100): K
     iterations++;
 
     // Assign points to nearest centroid
-    const cluster1Points: number[] = [];
-    const cluster2Points: number[] = [];
-
-    for (const point of data) {
-      const dist1 = Math.abs(point - centroid1);
-      const dist2 = Math.abs(point - centroid2);
-
-      if (dist1 < dist2) {
-        cluster1Points.push(point);
-      } else {
-        cluster2Points.push(point);
-      }
-    }
+    let [cluster1Points, cluster2Points] = assignPointsToClusters(data, centroid1, centroid2);
 
     // Handle edge case where one cluster is empty
     if (cluster1Points.length === 0 || cluster2Points.length === 0) {
       // If one cluster is empty, split the data at median
       const median = sortedData[Math.floor(sortedData.length / 2)];
-      cluster1Points.length = 0;
-      cluster2Points.length = 0;
+      cluster1Points = [];
+      cluster2Points = [];
 
       for (const point of data) {
         if (point < median) {
@@ -82,12 +70,12 @@ export function kMeansClustering(data: number[], maxIterations: number = 100): K
       }
     }
 
-    // Calculate new centroids
+    // Calculate new centroids using calculateMean
     const newCentroid1 = cluster1Points.length > 0
-      ? cluster1Points.reduce((sum, val) => sum + val, 0) / cluster1Points.length
+      ? calculateMean(cluster1Points)
       : centroid1;
     const newCentroid2 = cluster2Points.length > 0
-      ? cluster2Points.reduce((sum, val) => sum + val, 0) / cluster2Points.length
+      ? calculateMean(cluster2Points)
       : centroid2;
 
     // Check for convergence
@@ -105,19 +93,7 @@ export function kMeansClustering(data: number[], maxIterations: number = 100): K
   }
 
   // Calculate final cluster statistics
-  const cluster1Points: number[] = [];
-  const cluster2Points: number[] = [];
-
-  for (const point of data) {
-    const dist1 = Math.abs(point - centroid1);
-    const dist2 = Math.abs(point - centroid2);
-
-    if (dist1 < dist2) {
-      cluster1Points.push(point);
-    } else {
-      cluster2Points.push(point);
-    }
-  }
+  const [cluster1Points, cluster2Points] = assignPointsToClusters(data, centroid1, centroid2);
 
   const cluster1: Cluster = {
     centroid: centroid1,
@@ -158,6 +134,35 @@ function calculateStd(values: number[]): number {
   const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
   const variance = calculateMean(squaredDiffs);
   return Math.sqrt(variance);
+}
+
+/**
+ * Assign points to nearest centroid
+ * @param data - Array of data points
+ * @param centroid1 - First centroid
+ * @param centroid2 - Second centroid
+ * @returns Tuple of [cluster1Points, cluster2Points]
+ */
+function assignPointsToClusters(
+  data: number[],
+  centroid1: number,
+  centroid2: number
+): [number[], number[]] {
+  const cluster1Points: number[] = [];
+  const cluster2Points: number[] = [];
+
+  for (const point of data) {
+    const dist1 = Math.abs(point - centroid1);
+    const dist2 = Math.abs(point - centroid2);
+
+    if (dist1 < dist2) {
+      cluster1Points.push(point);
+    } else {
+      cluster2Points.push(point);
+    }
+  }
+
+  return [cluster1Points, cluster2Points];
 }
 
 /**
@@ -230,6 +235,9 @@ export function updateGaussianCurvesChart(kmeansResult: KMeansResult, allDeltaTi
     // Update existing chart
     gaussianChart.data.datasets[0].data = cluster1Curve;
     gaussianChart.data.datasets[1].data = cluster2Curve;
+    // Update labels with current cluster statistics
+    gaussianChart.data.datasets[0].label = `Cluster 1 (μ=${kmeansResult.clusters[0].mean.toFixed(3)}s, σ=${kmeansResult.clusters[0].std.toFixed(3)}s, n=${kmeansResult.clusters[0].points.length})`;
+    gaussianChart.data.datasets[1].label = `Cluster 2 (μ=${kmeansResult.clusters[1].mean.toFixed(3)}s, σ=${kmeansResult.clusters[1].std.toFixed(3)}s, n=${kmeansResult.clusters[1].points.length})`;
     gaussianChart.update();
   } else {
     // Create new chart
