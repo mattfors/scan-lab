@@ -7,16 +7,20 @@
 </head>
 <body>
     <div x-data="app" x-init="init()">
-        <button @click="fakeScan">Fake Scan</button>
-        <button @click="clearData">Clear Local Data</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <button @click="fakeScan">Fake Scan</button>
+                <button @click="clearData">Clear Local Data</button>
+            </div>
+            <div style="font-size: 24px; font-weight: bold;">
+                Total Scans: <span x-text="events.length"></span>
+            </div>
+        </div>
         
         <!-- Speed Metrics Charts (New Row) -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0;">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0;">
             <div>
                 <canvas id="scanSpeedChart"></canvas>
-            </div>
-            <div>
-                <canvas id="accelerationChart"></canvas>
             </div>
             <div>
                 <canvas id="speedVariabilityChart"></canvas>
@@ -24,7 +28,7 @@
         </div>
         
         <!-- Rolling Statistics Charts -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 20px 0;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0;">
             <div>
                 <canvas id="rollingMeanChart"></canvas>
             </div>
@@ -33,9 +37,6 @@
             </div>
             <div>
                 <canvas id="deltaVsIndexChart"></canvas>
-            </div>
-            <div>
-                <canvas id="zDeltaChart"></canvas>
             </div>
         </div>
         

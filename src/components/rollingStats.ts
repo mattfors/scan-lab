@@ -159,7 +159,7 @@ function getColorForLogStd(value: number | null): string {
 /**
  * Maps a rolling mean value to a color in a gradient from red to green.
  * Values from low to high map to red -> orange -> yellow -> green.
- * Low values are red, high values are green (inverted from previous version).
+ * Low values (below 0.2) are red, starts changing colors at 0.4.
  * @param value - The rolling mean value
  * @returns RGB color string
  */
@@ -168,30 +168,35 @@ function getColorForRollingMean(value: number | null): string {
     return DEFAULT_COLOR; // Gray for null/invalid values
   }
   
-  // Color mapping: red (0.6) -> orange (1.0) -> yellow (1.5) -> green (2.0+)
+  // Color mapping: red (< 0.2) -> starts changing at 0.4 -> green (higher values)
   // Low values are red, high values are green
   let r: number, g: number, b: number;
   
-  if (value < 0.6) {
+  if (value < 0.2) {
     // Below threshold, use red
     r = 255;
     g = 0;
     b = 0;
-  } else if (value < 1.0) {
-    // Red to Orange (0.6 to 1.0)
-    const t = (value - 0.6) / 0.4;
+  } else if (value < 0.4) {
+    // Stay red between 0.2 and 0.4 (no color change)
+    r = 255;
+    g = 0;
+    b = 0;
+  } else if (value < 0.8) {
+    // Red to Orange (0.4 to 0.8)
+    const t = (value - 0.4) / 0.4;
     r = 255;
     g = Math.round(165 * t); // 0 to 165 (orange)
     b = 0;
-  } else if (value < 1.5) {
-    // Orange to Yellow (1.0 to 1.5)
-    const t = (value - 1.0) / 0.5;
+  } else if (value < 1.2) {
+    // Orange to Yellow (0.8 to 1.2)
+    const t = (value - 0.8) / 0.4;
     r = 255;
     g = Math.round(165 + 90 * t); // 165 to 255 (yellow)
     b = 0;
   } else {
-    // Yellow to Green (1.5 to 2.0+)
-    const t = Math.min((value - 1.5) / 0.5, 1.0);
+    // Yellow to Green (1.2 to 2.0+)
+    const t = Math.min((value - 1.2) / 0.8, 1.0);
     r = Math.round(255 * (1 - t)); // 255 to 0
     g = 255;
     b = 0;
@@ -202,8 +207,8 @@ function getColorForRollingMean(value: number | null): string {
 
 /**
  * Maps a scan speed value to a color in a gradient from green to red.
- * Values from 0 to 7 map to green -> yellow -> orange -> red.
- * Low values (0) are green, high values (7+) are red.
+ * Values below 5 stay green, above 5 transition to red.
+ * Low values (< 5) are green, high values (10+) are red.
  * @param value - The scan speed value
  * @returns RGB color string
  */
@@ -212,11 +217,17 @@ function getColorForScanSpeed(value: number | null): string {
     return DEFAULT_COLOR; // Gray for null/invalid values
   }
   
-  // Clamp value to range [0, 7]
-  const clampedValue = Math.max(0, Math.min(7, value));
+  // Stay green below 5, then transition from green to red above 5
+  if (value < 5) {
+    // Below threshold, stay green
+    return 'rgb(0, 255, 0)';
+  }
   
-  // Normalize to [0, 1] where 0 = green and 1 = red
-  const normalized = clampedValue / 7;
+  // Clamp value to range [5, 10] for color transition
+  const clampedValue = Math.max(5, Math.min(10, value));
+  
+  // Normalize to [0, 1] where 0 = 5 (green) and 1 = 10 (red)
+  const normalized = (clampedValue - 5) / 5;
   
   let r: number, g: number, b: number;
   
@@ -816,10 +827,8 @@ export function updateZDeltaChart(events: ScanEvent[], config: RollingStatsConfi
  */
 export function updateRollingStatsCharts(events: ScanEvent[], config: RollingStatsConfig = defaultRollingStatsConfig): void {
   updateScanSpeedChart(events, config);
-  updateAccelerationChart(events, config);
   updateSpeedVariabilityChart(events, config);
   updateRollingMeanChart(events, config);
   updateRollingStdLogChart(events, config);
   updateDeltaVsIndexChart(events, config);
-  updateZDeltaChart(events, config);
 }
