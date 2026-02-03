@@ -2,18 +2,19 @@ import './styles/main.css';
 import Alpine from 'alpinejs';
 import PouchDB from 'pouchdb-browser';
 import type { ScanEvent, AppConfig } from './types/event';
-import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend } from 'chart.js';
+import { Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { ModuleRegistry, GridOptions, createGrid, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import 'ag-grid-community/styles/ag-theme-balham.css';
 import { updateRollingStatsCharts, defaultRollingStatsConfig } from './components/rollingStats';
+import { performKMeansAndUpdateChart } from './components/kmeansClustering';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Register Chart.js components
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend);
+Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Title, Tooltip, Legend, Filler);
 
 // Application configuration
 const appConfig: AppConfig = {
@@ -273,6 +274,9 @@ Alpine.data('app', (): AppData => ({
       
       // Update rolling statistics charts
       updateRollingStatsCharts(sortedEvents.slice().reverse()); // Pass in chronological order
+      
+      // Perform k-means clustering and update Gaussian curves chart
+      performKMeansAndUpdateChart(sortedEvents.slice().reverse()); // Pass in chronological order
     } catch (error) {
       console.error('Error loading events:', error);
     }
